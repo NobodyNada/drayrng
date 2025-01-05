@@ -189,8 +189,6 @@ fn main() {
         );
 
         if left {
-            imageops::overlay(&mut output, &draygon, 0, 64);
-        } else {
             let draygon = draygon.fliph();
             imageops::overlay(
                 &mut output,
@@ -198,10 +196,12 @@ fn main() {
                 (room.width() - draygon.width()) as i64,
                 64,
             );
+        } else {
+            imageops::overlay(&mut output, &draygon, 0, 64);
         }
         imageops::overlay(&mut output, &room, 0, 0);
 
-        let y = 0x01C9;
+        let y = 0x01B5;
         for x in 0x45..=0x019B {
             let samus = Samus { x, y };
             let num_seeds = seeds
