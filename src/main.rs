@@ -1,5 +1,6 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, fs::File};
 
+use image::{imageops, ImageBuffer, ImageFormat, Pixel, Rgba};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use smrng::Rng;
 
@@ -172,11 +173,34 @@ fn main() {
         Draygon::simulate_goop(rng, 0x88, false, &Samus { x, y })
     );*/
 
+    let room = image::load_from_memory(include_bytes!("../res/DraygonsRoom.png")).unwrap();
+    let draygon = image::load_from_memory(include_bytes!("../res/Draygon.png")).unwrap();
+
     let global_timer_range = 0x80;
     let total_seeds = seeds.len() * global_timer_range as usize;
 
     for left in [true, false] {
         println!("{}:", if left { "left" } else { "right" });
+
+        let mut output = ImageBuffer::<Rgba<u8>, _>::from_pixel(
+            room.width(),
+            room.height(),
+            Rgba([0, 0, 0, 255]),
+        );
+
+        if left {
+            imageops::overlay(&mut output, &draygon, 0, 64);
+        } else {
+            let draygon = draygon.fliph();
+            imageops::overlay(
+                &mut output,
+                &draygon,
+                (room.width() - draygon.width()) as i64,
+                64,
+            );
+        }
+        imageops::overlay(&mut output, &room, 0, 0);
+
         let y = 0x01C9;
         for x in 0x45..=0x019B {
             let samus = Samus { x, y };
@@ -190,11 +214,34 @@ fn main() {
                 })
                 .count();
 
-            let percent = (num_seeds as f32 / total_seeds as f32 * 10000.).round() / 100.;
+            let prob = num_seeds as f32 / total_seeds as f32;
+
+            let scaled_prob = (prob - 2. / 3.).max(0.) * 3.;
+            let scaled_prob = scaled_prob.powi(4);
+            let color =
+                Rgba([1. - scaled_prob, scaled_prob, 0., 1.].map(|x| (x * 256.).round() as u8));
+
+            let image_x = x as u32 * 2;
+            for image_y in 352..room.height() {
+                for image_x in image_x..image_x + 2 {
+                    output[(image_x, image_y)].blend(&color);
+                }
+            }
+
+            let percent = (prob * 10000.).round() / 100.;
             println!(
                 "    {:#05x}: {:02.02}% ({} / {})",
                 x, percent, num_seeds, total_seeds
             );
         }
+        let filename = if left {
+            "output_left.png"
+        } else {
+            "output_right.png"
+        };
+
+        output
+            .write_to(&mut File::create(filename).unwrap(), ImageFormat::Png)
+            .unwrap();
     }
 }
