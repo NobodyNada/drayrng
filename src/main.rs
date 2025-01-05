@@ -30,8 +30,8 @@ fn cosmul(x: u8, theta: u8) -> i32 {
     let mut frac = (mul & 0xFF) << 8;
 
     if theta >= 0x80 {
-        int = -(int as i16) as u16;
-        frac = -(frac as i16) as u16;
+        int = int.wrapping_neg();
+        frac = frac.wrapping_neg();
     }
 
     ((int as u32) << 16 | (frac as u32)) as i32
